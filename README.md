@@ -1,4 +1,4 @@
-#Bitbucket Pipelines configurations for Android. 
+# Bitbucket Pipelines configurations for Android. 
 
 A collection of bitbucket configurations for android projects. 
 
