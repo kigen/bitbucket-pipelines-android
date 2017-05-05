@@ -1,0 +1,22 @@
+image: uber/android-build-environment:latest
+
+pipelines:
+  default:
+    - step:
+        script:
+            # Grab the Android Support Repo which isn't included in the container
+            - echo y | android update sdk --filter "extra-android-m2repository" --no-ui -a 
+            - mkdir "${ANDROID_HOME}/licenses" || true
+            - echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > "${ANDROID_HOME}/licenses/android-sdk-license"
+            - ./gradlew assembleStaging
+            - . ./setup_export.sh
+            ##########  UPLOAD APK TO BITBUCKET DOWNLOADS ##########
+            # Instructions to setup the next line. https://confluence.atlassian.com/bitbucket/deploy-build-artifacts-to-bitbucket-downloads-872124574.html
+            - curl -X POST --user "${BB_AUTH_STRING}" "https://api.bitbucket.org/2.0/repositories/${BITBUCKET_REPO_OWNER}/${BITBUCKET_REPO_SLUG}/downloads" --form files=@"${LATEST_APK}"
+            ##########  UPLOAD APK TO SLACK #CHANNEL ##########
+            # Setup the following enviroment variables on bitbucket pipelines  & 
+            # SLACK_TOKEN - Obtain this token from: https://api.slack.com/custom-integrations/legacy-tokens
+            # SLACK_CHANNEL - Channel name to upload the file. 
+            - curl -F file=@"./app/build/outputs/apk/$FILE_NAME" -F channels=${SLACK_CHANNEL} -F token=${SLACK_TOKEN} https://slack.com/api/files.upload
+            ##########  UPLOAD A CHANGELOG POST TO SLACK #CHANNEL ##########
+            - curl -F content="---Uploaded by bitbucket pipelines, Pending manual edit---" -F filetype=post -F title="$FILE_TITLE CHANGELOG $BUILD_DATE" -F channels=${SLACK_CHANNEL} -F token=${SLACK_TOKEN} https://slack.com/api/files.upload
